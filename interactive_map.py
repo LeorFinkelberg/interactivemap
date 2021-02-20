@@ -1,7 +1,6 @@
 import sqlite3
 from collections import namedtuple
-from datetime import datetime
-from typing import List, NoReturn, Tuple
+from typing import NoReturn, List
 
 import folium
 import numpy as np
@@ -11,15 +10,12 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit_folium import folium_static
-from win32api import GetSystemMetrics  # для вычисления размеров экрана
 
 from css import (
     annotation_css,
     annotation_css_sidebar,
-    annotation_normal_css,
     header_css,
     logo_css,
-    subheader_css,
 )
 from database import (
     EmptyDatabase,
@@ -29,6 +25,7 @@ from database import (
     db_create_table,
     db_delete_record,
     db_insert_record,
+    db_insert_record_many,
     db_read_table,
 )
 
@@ -43,7 +40,8 @@ st.set_page_config(
 DB_NAME = "gisobjects.sqlite"  # файловая база данных
 MARKER_TBL_NAME = "markers"  # таблица маркеров
 Record = namedtuple(
-    "Record", ["id", "longitude", "latitude", "marker_name", "descr_pattern"]
+    "Record", ["id", "longitude", "latitude",
+               "marker_name", "descr_pattern", "marker_value"]
 )
 
 
@@ -53,8 +51,6 @@ def init_db():
         db_create_table(cur, MARKER_TBL_NAME)
     except sqlite3.DatabaseError as err:
         st.error(f"Ошбика база данных: {err}")
-    else:
-        print("### База данных успешно инициализирована!")
     finally:
         cur.close()
         conn.close()
@@ -86,20 +82,52 @@ def main_elements():
         uploaded_file = st.file_uploader(
             "Для добавления нескольких маркеров на карту выберите Excel-файл...",
             type=["xls", "xlsx"],
-            accept_multiple_files=True,
+            accept_multiple_files=False,
         )
+        
+    if uploaded_file is not None:
+        create_markers_from_excel(uploaded_file)
 
     with row2_2:
         pass
 
-    conn, cur = db_conn_cursor(DB_NAME)
-    list_records = db_read_table(cur, MARKER_TBL_NAME)
-    # список записей таблицы без индекса
-    list_records_wo_id = [record[1:] for record in list_records]
+    try:
+        conn, cur = db_conn_cursor(DB_NAME)
+        list_records = db_read_table(cur, MARKER_TBL_NAME)
+        
+        # список записей таблицы без индекса
+        list_records_wo_id = [record[1:] for record in list_records]
+    except sqlite3.DatabaseError as err:
+        st.error(f"Ошбика база данных: {err}")
+    finally:
+        cur.close()
+        conn.close()
 
     st.selectbox(
         "Доступные элементы базы данных маркеров", options=list_records_wo_id
     )
+
+
+def create_markers_from_excel(excel_file_name):
+    excel_file = pd.read_excel(excel_file_name,
+                               names=["longitude", "latitude",
+                                      "marker_name", "descr", "value"])
+    list_tuples_for_query = [tuple(record)[1:]
+                             for record in list(excel_file.to_records())]
+    
+    try:
+        conn, cur = db_conn_cursor(DB_NAME)
+        #list_records = db_read_table(cur, MARKER_TBL_NAME)
+        
+        db_insert_record_many(cur, MARKER_TBL_NAME, list_tuples_for_query)
+    except sqlite3.DatabaseError as err:
+        st.error(f"Ошибка базы данных: {err}")
+    else:
+        st.success("Маркеры успешны добавлены!")
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
 
 
 def create_map_figure():
@@ -212,10 +240,11 @@ def marker_creator(
     longitude: float,
     latitude: float,
     marker_name: str,
-    # descr: str,
+    descr: str,
+    marker_value: float,
     # clr: str,
 ) -> NoReturn:
-    popup = f"<br>{longitude}<br>{latitude}<br>{marker_name}"
+    popup = (f"<br>-{marker_name};<br>-{descr};<br>-{marker_value}")
     folium.CircleMarker(
         location=[longitude, latitude],
         popup=popup,
@@ -231,7 +260,7 @@ def marker_creator(
 def map_creator(
     longitude: float = 55.8080479110204,
     latitude: float = 37.50940617883486,
-    zoom_start: int = 5,
+    zoom_start: int = 8,
 ) -> folium.Map:
     main_map = folium.Map(
         location=[longitude, latitude],
@@ -248,11 +277,15 @@ def map_creator(
 
 
 def create_record_in_database(
-    longitude: float, latitude: float, marker_name: str, descr_pattern: str
+    longitude: float,
+    latitude: float,
+    marker_name: str,
+    descr_pattern: str,
+    marker_value: float
 ) -> NoReturn:
     try:
         conn, cur = db_conn_cursor(DB_NAME)
-        db_create_table(cur, MARKER_TBL_NAME)
+        # db_create_table(cur, MARKER_TBL_NAME)
 
         list_records = db_read_table(cur, MARKER_TBL_NAME)
         # список записей таблицы без индекса
@@ -263,6 +296,7 @@ def create_record_in_database(
             latitude,
             marker_name.upper(),
             descr_pattern.upper(),
+            marker_value,
         )
         if record in list_records_wo_id:
             raise RowsAlreadyExists("Такая запись уже существует")
@@ -284,8 +318,8 @@ def create_record_in_database(
 def delete_record_from_database(marker_name: str) -> NoReturn:
     try:
         conn, cur = db_conn_cursor(DB_NAME)
-
         list_records = db_read_table(cur, MARKER_TBL_NAME)
+        
         # список имен маркеров
         list_marker_names = [
             Record(*elem).marker_name for elem in list_records
@@ -301,8 +335,9 @@ def delete_record_from_database(marker_name: str) -> NoReturn:
     except MarkerNameError as err:
         st.error(err)
     else:
-        st.success(f"Запись успешно удалена из базы данных!")
+        st.success("Запись успешно удалена из базы данных!")
         conn.commit()
+        put_markers_on_map()
     finally:
         cur.close()
         conn.close()
@@ -355,10 +390,14 @@ def sidebar_elements():
     )
 
     # d[descr_pattern] # <----------------------------------------------------------------------------------
+    
+    marker_value = st.sidebar.number_input("Введите значение показателя", value=1500)
+    
     if st.sidebar.button("Добавить маркер в базу данных"):
         create_record_in_database(
-            longitude, latitude, marker_name, descr_pattern
+            longitude, latitude, marker_name, descr_pattern, marker_value
         )
+        put_markers_on_map()
 
     annotation_css_sidebar(
         "Удалить один маркер слоя по имени",
@@ -366,9 +405,21 @@ def sidebar_elements():
         size=15,
         clr="#52616B",
     )
-    marker_name_for_del = st.sidebar.text_input(
-        "Введите имя маркера для удаления", "Газпром проектирование"
-    )
+    
+    try:
+        conn, cur = db_conn_cursor(DB_NAME)
+        list_records = db_read_table(cur, MARKER_TBL_NAME)
+        
+        # список записей таблицы без индекса
+        list_avaible_marker_name = [Record(*record).marker_name for record in list_records]
+        marker_name_for_del = st.sidebar.selectbox(
+            "Выберите имя маркера для удаления", options=list_avaible_marker_name
+        )
+    except sqlite3.DatabaseError as err:
+        st.error(f"Ошбика база данных: {err}")
+    finally:
+        cur.close()
+        conn.close()
 
     if st.sidebar.button("Удалить маркер из базы данных"):
         delete_record_from_database(marker_name_for_del.upper())
@@ -380,16 +431,18 @@ def put_markers_on_map():
     """
     try:
         conn, cur = db_conn_cursor(DB_NAME)
-
         list_records = db_read_table(cur, MARKER_TBL_NAME)
 
-        if list_records != []:
+        if list_records:
             for record in list_records:
-                lon = Record(*record).longitude
-                lat = Record(*record).latitude
-                marker_name = Record(*record).marker_name
+                from_record2_nt = Record(*record)
+                lon = from_record2_nt.longitude
+                lat = from_record2_nt.latitude
+                marker_name = from_record2_nt.marker_name
+                descr_pattern = from_record2_nt.descr_pattern
+                marker_value = from_record2_nt.marker_value
 
-                marker_creator(lon, lat, marker_name)
+                marker_creator(lon, lat, marker_name, descr_pattern, marker_value)
         else:
             raise EmptyDatabase("Пока в базе нет ни одного маркера...")
 

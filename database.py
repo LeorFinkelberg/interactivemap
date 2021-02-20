@@ -47,22 +47,36 @@ def db_create_table(cur, tbl_name: str):
           `longitude` REAL NOT NULL,
           `latitude` REAL NOT NULL,
           `marker_name` TEXT NOT NULL,
-          `descr_pattern` TEXT NOT NULL
+          `descr_pattern` TEXT NOT NULL,
+          `marker_value` REAL NOT NULL
         );
         """
     )
 
 
-def db_insert_record(cur, tbl_name: str, record: Tuple[str]):
+def db_insert_record(cur, tbl_name: str, record: Tuple):
     """
     Вставляет одну запись в таблицу базы данных
     """
     cur.execute(
         f"""
-        INSERT INTO {tbl_name}(longitude, latitude, marker_name, descr_pattern)
-        VALUES (?, ?, ?, ?);
+        INSERT INTO {tbl_name}(longitude, latitude, marker_name, descr_pattern, marker_value)
+        VALUES (?, ?, ?, ?, ?);
         """,
         record,
+    )
+    
+    
+def db_insert_record_many(cur, tbl_name: str, records: List[Tuple]):
+    """
+    Вставляет несколько записей в таблицу базы данных
+    """
+    cur.executemany(
+        f"""
+        INSERT INTO {tbl_name}(longitude, latitude, marker_name, descr_pattern, marker_value)
+        VALUES (?, ?, ?, ?, ?);
+        """,
+        records,
     )
 
 
