@@ -4,7 +4,12 @@ from collections import namedtuple
 
 import sqlite3
 import folium
+import pandas as pd
+import numpy as np
 import streamlit as st
+import plotly.graph_objects as go
+import plotly.express as px
+from datetime import datetime
 from streamlit_folium import folium_static
 
 from css import (
@@ -16,6 +21,7 @@ from css import (
     subheader_css,
 )
 from database import (
+    EmptyDatabase,
     RowsAlreadyExists,
     MarkerNameError,
     db_conn_cursor,
@@ -28,28 +34,50 @@ from database import (
 
 st.set_page_config(
         layout="wide",
-        page_title = ("Интерактивная карта импликации отработанных труб газопроводов"),
-        initial_sidebar_state="collapsed"
+        page_title = (
+            "Интерактивная карта импликации отработанных труб газопроводов"
+        ),
+        initial_sidebar_state="expanded"
 )
 
 DB_NAME = "gisobjects.sqlite" # файловая база данных 
 MARKER_TBL_NAME = "markers"   # таблица маркеров
+Record = namedtuple("Record",
+                    ["id", "longitude", "latitude",
+                     "marker_name", "descr_pattern"]
+)
+
+
+def init_db():
+    try:
+        conn, cur = db_conn_cursor(DB_NAME)
+        db_create_table(cur, MARKER_TBL_NAME)
+    except sqlite3.DatabaseError as err:
+        st.error(f"Ошбика база данных: {err}")
+    else:
+        print("### База данных успешно инициализирована!")
+    finally:
+        cur.close()
+        conn.close()
+    
 
 def main_elements():
+    """
+    Создает шапку страницы
+    """
     # === Верхняя часть шапки ===
-    row1_1, row1_2 = st.beta_columns([1, 1])
+    row1_1, row1_2 = st.beta_columns([2, 1])
     
     with row1_1:
-        logo_css("ГАЗСТРОЙПРОМ", clr="black", size=6)
-        header_css("<i>Интерактивная карта импликации "
-                   "отработанных труб газопроводов</i> (демонстрация)",
-                   align = "left", clr="black")
+        logo_css("АО ГАЗСТРОЙПРОМ", align="left", clr="#1E2022", size=33)
+        logo_css("<i>Департамент по восстановлению и утилизации трубной продукции</i>",
+                 align="left", clr="#52616B", size=18)
         
     with row1_2:
-        annotation_css("Описание")
+        pass
         
     # === Нижняя часть шапки ===
-    row2_1, row2_2 = st.beta_columns([1, 1])
+    row2_1, row2_2 = st.beta_columns([2, 1])
     
     with row2_1:
         uploaded_file = st.file_uploader(
@@ -58,41 +86,129 @@ def main_elements():
             accept_multiple_files=True)
         
     with row2_2:
-        st.write("test3...")
+        pass
+    
+    conn, cur = db_conn_cursor(DB_NAME)
+    list_records = db_read_table(cur, MARKER_TBL_NAME)
+    # список записей таблицы без индекса
+    list_records_wo_id = [record[1:] for record in list_records]
+    
+    st.selectbox("Доступные элементы базы данных маркеров", options=list_records_wo_id)
         
-    map_obj = map_creator(zoom_start=15)
-    folium.LayerControl().add_to(map_obj)
+    
+def create_map_figure():
+    """
+    Отображает сконфигурированную карту
+    """
+    header_css("<i>Интерактивная карта импликации отработанных труб газопроводов</i>",
+                   align = "left", clr="#52616B", size=26)
+        
+    folium.LayerControl().add_to(main_map)
     
     # width, height = GetSystemMetrics(0), GetSystemMetrics(1)
     # fraction_width = 0.735
     # fraction_height = 0.55
     
-    annotation_css("Детали")
+    row1, row2 = st.beta_columns([2, 1])
+    with row1:
+        st.markdown("_Ниже приводится упрощенное представление карты. Коммерческий вариант "
+                    "приложения на усмотрение Заказчика может быть "
+                    "построен с помощью [MapBox](https://www.mapbox.com/maps)_")
+        
+    annotation_css("Для навигации по карте можно использовать "
+                   "компоненты ZoomIn (+), ZoomOut (-) и Drag", clr="#C9D6DF")
+
+
+def render_folium_map():
     folium_static( # NB! требуется для отображения карты в Streamlit
-        map_obj,
-        width=1500,
-        height=700
+        main_map,
+        width=1050,
+        height=550
     )
+
+
+def plotly_marimekko_chart() -> NoReturn:
+    df = pd.DataFrame({
+        "values" : np.random.randint(1000, 5000, size=8),
+        "markers" : ["Югорск", "Надым", "Ухта", "Тюмень",
+                   "Томск", "Уфа", "Тимашевск", "Москва"]
+    })
+
+
+def plotly_pie() -> NoReturn:
+    df = pd.DataFrame({
+        "values" : np.random.randint(1000, 5000, size=8),
+        "markers" : ["Югорск", "Надым", "Ухта", "Тюмень",
+                   "Томск", "Уфа", "Тимашевск", "Москва"]
+    })
+    # fig = px.pie(df, values="values", names="markers", title="Распределение",
+    #              color_discrete_sequence=px.colors.sequential.Bluyl_r)
+    fig = go.Figure(data=[
+        go.Pie(
+            labels=df["markers"],
+            values=df["values"],
+            scalegroup="one",
+            hole=0.3
+        )
+    ])
+    fig.update_traces(
+        hoverinfo='label+percent',
+        textinfo='label+value',
+        textfont_size=15,
+    )
+    st.sidebar.plotly_chart(fig, use_container_width=False)
         
     
+def plotly_lines() -> NoReturn:
+    df = pd.DataFrame({
+        "lom" : np.random.randint(1000, 5000, size=8),
+        "bu" : np.random.randint(10000, 50000, size=8),
+        "markers" : ["Югорск", "Надым", "Ухта", "Тюмень",
+                   "Томск", "Уфа", "Тимашевск", "Москва"]
+    })
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(x=df["markers"], y=df["lom"],
+                   mode="lines+markers",
+                    name=None
+        )
+    )
+    fig.add_trace(
+        go.Scatter(x=df["markers"], y=df["bu"],
+                   mode="lines+markers",
+                    name=None
+        )
+    )
+    st.sidebar.plotly_chart(fig, use_container_width=True)
+    
+    
 def marker_creator(
-        map_obj: folium.Map,
+        # map_obj: folium.Map,
         longitude: float,
         latitude: float,
-        marker_name: str = ""
+        marker_name: str,
+        # descr: str,
+        # clr: str,
 ) -> NoReturn:
-    folium.Marker(
+    popup = f"<br>{longitude}<br>{latitude}<br>{marker_name}"
+    folium.CircleMarker(
         location = [longitude, latitude],
-        popup = f"<i>{marker_name}</i>"
-    ).add_to(map_obj)
+        popup = popup,
+        radius = 15,
+        color="#3186cc",
+        fill=True,
+        fill_color="#3186cc",
+        alt="TEST",
+        title = "TEST-2"
+    ).add_to(main_map)
 
 
 def map_creator(
-    longitude: float = 54.918808900513945,
-    latitude: float = 37.49186810734705,
+    longitude: float = 55.8080479110204,
+    latitude: float = 37.50940617883486,
     zoom_start: int = 5
 ) -> folium.Map:
-    mainMap = folium.Map(
+    main_map = folium.Map(
         location = [longitude, latitude],
         #maxZoom=15,
         #minZoom=5,
@@ -103,22 +219,24 @@ def map_creator(
         tiles="OpenStreetMap",
         dragging=True
     )
-    return mainMap
+    return main_map
     
 
 def create_record_in_database(
     longitude: float,
     latitude: float,
-    marker_name: str
+    marker_name: str,
+    descr_pattern: str
 ) -> NoReturn:
     try:
         conn, cur = db_conn_cursor(DB_NAME)
         db_create_table(cur, MARKER_TBL_NAME)
         
-        list_records: List[Tuple[int, float, float, str]] = db_read_table(cur, MARKER_TBL_NAME)
-        list_records_wo_id = [record[1:] for record in list_records] # список записей таблицы без индекса
+        list_records = db_read_table(cur, MARKER_TBL_NAME)
+        # список записей таблицы без индекса
+        list_records_wo_id = [record[1:] for record in list_records]
         
-        record = (longitude, latitude, marker_name.lower()) 
+        record = (longitude, latitude, marker_name.upper(), descr_pattern.upper()) 
         if record in list_records_wo_id:
             raise RowsAlreadyExists("Такая запись уже существует")
         else:
@@ -142,19 +260,17 @@ def delete_record_from_database(
     try:
         conn, cur = db_conn_cursor(DB_NAME)
         
-        list_records: List[Tuple[int, float, float, str]] = db_read_table(cur, MARKER_TBL_NAME)
-        Record = namedtuple("Record", ["id", "longitude", "latitude", "marker_name"])
-        list_marker_names = [Record(*elem).marker_name for elem in list_records] # список имен маркеров
-        st.write(list_marker_names)
-        
+        list_records = db_read_table(cur, MARKER_TBL_NAME)
+        # список имен маркеров
+        list_marker_names = [Record(*elem).marker_name for elem in list_records]        
         if marker_name in list_marker_names:
             db_delete_record(cur, MARKER_TBL_NAME, marker_name)
         else:
-            raise MarkerNameError("Такого маркера нет в базе данных")
+            raise MarkerNameError(f"Маркера '{marker_name.upper()}' нет в базе данных!")
     except sqlite3.DatabaseError as err:
         st.error(f"Ошибка базы данных: {err}")
     except MarkerNameError as err:
-        st.error(f"{err}")
+        st.error(err)
     else:
         st.success(f"Запись успешно удалена из базы данных!")
         conn.commit()
@@ -163,26 +279,113 @@ def delete_record_from_database(
         conn.close()
 
 
-def side_bar_elements():
-    annotation_css_sidebar("Конструктор маркеров слоя", size=18)
-    annotation_css_sidebar("Добавить один маркер слоя", size=15)
+def sidebar_elements():
+    annotation_css_sidebar(
+        "Работа с базой данных маркеров слоя",
+        align="left",
+        size=18,
+        clr="#1E2022"
+    )
     
-    longitude = st.sidebar.number_input("Введите долготу", value=54.93295515459673, format="%3f")
-    latitude = st.sidebar.number_input("Введите широту", value=37.51391062707511, format="%3f")
-    marker_name = st.sidebar.text_input("Введите название маркера", "Серпуховское ЛПУМГ")  
-        
+    if st.sidebar.button("Выгрузить базу данных маркеров"):
+        st.warning("База данных успешно выгружена в текущую директорию")
+        pass
+    
+    if st.sidebar.button("Обновить базу данных маркеров"):
+        put_markers_on_map()
+        st.warning("База данных успешно обновлена")
+    
+    annotation_css_sidebar(
+        "Конструктор маркеров слоя",
+        align="left",
+        size=18,
+        clr="#1E2022"
+    )
+    annotation_css_sidebar(
+        "Добавить один маркер слоя",
+        align="left",
+        size=15,
+        clr="#52616B"
+    )
+    
+    longitude = st.sidebar.number_input(
+        "Введите долготу",
+        value=54.93295515459673,
+        format="%3f"
+    )
+    latitude = st.sidebar.number_input(
+        "Введите широту",
+        value=37.51391062707511,
+        format="%3f"
+    )
+    marker_name = st.sidebar.text_input(
+        "Введите имя маркера",
+        "Серпуховское ЛПУМГ"
+    )
+    
+    clr_icon_for_descr_pattern = {
+        "Отходы трансгазы" : ("blue"),
+        "Отходы добыча" : ("black"),
+        "Лом" : ("orange"),
+        "Труба б/у" : ("green"),
+        "Труба категории А3" : ("blue"),
+        "Площадки по отходам" : ("yellow")
+    }
+    descr_pattern = st.sidebar.selectbox(
+        "Выберете шаблон описания маркера",
+        list(clr_icon_for_descr_pattern.keys())
+    )
+    
+    # d[descr_pattern] # <----------------------------------------------------------------------------------
     if st.sidebar.button("Добавить маркер в базу данных"):
-        create_record_in_database(longitude, latitude, marker_name)
+        create_record_in_database(longitude, latitude, marker_name, descr_pattern)
         
-    annotation_css_sidebar("Удалить один маркер слоя по имени", size=15)
-    marker_name_for_del = st.sidebar.text_input("Введите имя маркера", "Серпуховское ЛПУМГ")  
+    annotation_css_sidebar("Удалить один маркер слоя по имени",
+                           align="left",
+                           size=15,
+                           clr="#52616B")
+    marker_name_for_del = st.sidebar.text_input(
+        "Введите имя маркера для удаления",
+        "Газпром проектирование"
+    )  
     
     if st.sidebar.button("Удалить маркер из базы данных"):
-        delete_record_from_database(marker_name_for_del.lower())
+        delete_record_from_database(marker_name_for_del.upper())
+    
+def put_markers_on_map():
+    """
+    Наносит марекры на карту
+    """
+    try:
+        conn, cur = db_conn_cursor(DB_NAME)
+        
+        list_records = db_read_table(cur, MARKER_TBL_NAME)
+        
+        if list_records != []:
+            for record in list_records:
+                lon = Record(*record).longitude
+                lat = Record(*record).latitude
+                marker_name = Record(*record).marker_name
+                
+                marker_creator(lon, lat, marker_name)
+        else:
+            raise EmptyDatabase("Пока в базе нет ни одного маркера...")
+            
+    except sqlite3.DatabaseError as err:
+        st.error(f"Ошбика база данных: {err}")
+    except EmptyDatabase as err:
+        st.warning(err)
+    finally:
+        cur.close()
+        conn.close()
     
 
     
-    
 if __name__ == "__main__":
+    init_db() # инициализация базы данных
+    main_map = map_creator()
     main_elements()
-    side_bar_elements()
+    sidebar_elements()
+    create_map_figure()
+    put_markers_on_map()
+    render_folium_map()

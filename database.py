@@ -18,6 +18,13 @@ class MarkerNameError(Exception):
     pass
 
 
+class EmptyDatabase(Exception):
+    """
+    Пользовательское исключение. Возбуждается если при старте сессии
+    база данных пуста
+    """
+    pass
+
 def db_conn_cursor(db_name: str):
     """
     Возвращает объект-соединения и 
@@ -35,7 +42,8 @@ def db_create_table(cur, tbl_name: str):
           `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
           `longitude` REAL NOT NULL,
           `latitude` REAL NOT NULL,
-          `marker_name` TEXT NOT NULL
+          `marker_name` TEXT NOT NULL,
+          `descr_pattern` TEXT NOT NULL
         );
         """)
 
@@ -46,8 +54,8 @@ def db_insert_record(cur, tbl_name: str, record: Tuple[str]):
     """
     cur.execute(
         f"""
-        INSERT INTO {tbl_name}(longitude, latitude, marker_name)
-        VALUES (?, ?, ?);
+        INSERT INTO {tbl_name}(longitude, latitude, marker_name, descr_pattern)
+        VALUES (?, ?, ?, ?);
         """, record)
         
 

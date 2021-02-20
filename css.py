@@ -10,8 +10,8 @@ def logo_css(
 ) -> NoReturn:
     st.markdown(
         f"<h1 style='font-family: Helvetica, sans-serif;"
-        "line-height: 1.2; margin-top: 0px; font-size: {size}px;"
-        "text-align: {align};"
+        f"line-height: 1.2; margin-top: 0px; font-size: {size}px;"
+        f"text-align: {align};"
         f"color: {clr}'>{text}",
         unsafe_allow_html=True,
     )
@@ -20,12 +20,13 @@ def logo_css(
 def header_css(
         text: str = "",
         align: str = "center",
-        clr: str = "black"
+        clr: str = "black",
+        size: int = 25
 ) -> NoReturn:
     st.markdown(
         f"<h1 style='font-family: Helvetica, sans-serif;"
-        "line-height: 1.2; margin-top: 3px; font-size: 18px;"
-        "text-align: {align};"
+        f"line-height: 1.2; margin-top: 0px; font-size: {size}px;"
+        f"text-align: {align};"
         f"color: {clr}'>{text}",
         unsafe_allow_html=True,
     )
@@ -37,7 +38,7 @@ def subheader_css(
 ) -> NoReturn:
     st.markdown(
         f"<h2 style='font-family: Helvetica, sans-serif;"
-        "line-height: 1.2; text-align: justify; font-size: 20px;"
+        f"line-height: 1.2; text-align: justify; font-size: 20px;"
         f"color: {clr}'>{text}",
         unsafe_allow_html=True,
     )
@@ -58,12 +59,13 @@ def annotation_css(
     
 def annotation_css_sidebar(
         text: str = "",
+        align: str = "center",
         clr: str = "black",
         size: int = 15
 ) -> NoReturn:
     st.sidebar.markdown(
         f"<h2 style='font-family: Helvetica, sans-serif;"
-        f"line-height: 1.2; text-align: justify; font-size: {size}px;"
+        f"line-height: 1.2; text-align: {align}; font-size: {size}px;"
         f"color: {clr}'><i>{text}</i>",
         unsafe_allow_html=True,
     )
