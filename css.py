@@ -1,12 +1,10 @@
-import streamlit as st
 from typing import NoReturn
+
+import streamlit as st
 
 
 def logo_css(
-        text: str = "",
-        align: str = "center",
-        clr: str = "black",
-        size: int = 15
+    text: str = "", align: str = "center", clr: str = "black", size: int = 15
 ) -> NoReturn:
     st.markdown(
         f"<h1 style='font-family: Helvetica, sans-serif;"
@@ -18,10 +16,7 @@ def logo_css(
 
 
 def header_css(
-        text: str = "",
-        align: str = "center",
-        clr: str = "black",
-        size: int = 25
+    text: str = "", align: str = "center", clr: str = "black", size: int = 25
 ) -> NoReturn:
     st.markdown(
         f"<h1 style='font-family: Helvetica, sans-serif;"
@@ -32,10 +27,7 @@ def header_css(
     )
 
 
-def subheader_css(
-        text: str = "",
-        clr: str = "black"
-) -> NoReturn:
+def subheader_css(text: str = "", clr: str = "black") -> NoReturn:
     st.markdown(
         f"<h2 style='font-family: Helvetica, sans-serif;"
         f"line-height: 1.2; text-align: justify; font-size: 20px;"
@@ -45,9 +37,7 @@ def subheader_css(
 
 
 def annotation_css(
-        text: str = "",
-        clr: str = "black",
-        size: int = 15
+    text: str = "", clr: str = "black", size: int = 15
 ) -> NoReturn:
     st.markdown(
         f"<h2 style='font-family: Helvetica, sans-serif;"
@@ -55,13 +45,10 @@ def annotation_css(
         f"color: {clr}'><i>{text}</i>",
         unsafe_allow_html=True,
     )
-    
-    
+
+
 def annotation_css_sidebar(
-        text: str = "",
-        align: str = "center",
-        clr: str = "black",
-        size: int = 15
+    text: str = "", align: str = "center", clr: str = "black", size: int = 15
 ) -> NoReturn:
     st.sidebar.markdown(
         f"<h2 style='font-family: Helvetica, sans-serif;"
@@ -72,9 +59,7 @@ def annotation_css_sidebar(
 
 
 def annotation_normal_css(
-        text: str = "",
-        clr: str = "black",
-        size: int = 15
+    text: str = "", clr: str = "black", size: int = 15
 ) -> NoReturn:
     st.markdown(
         f"<h2 style='font-family: Helvetica, sans-serif;"
