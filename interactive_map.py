@@ -43,6 +43,10 @@ Record = namedtuple(
     "Record", ["id", "longitude", "latitude",
                "marker_name", "descr_pattern", "marker_value"]
 )
+Record_wo_id = namedtuple(
+    "Record_wo_id", ["longitude", "latitude",
+               "marker_name", "descr_pattern", "marker_value"]
+)
 
 
 def init_db():
@@ -114,6 +118,13 @@ def create_markers_from_excel(excel_file_name):
                                       "marker_name", "descr", "value"])
     list_tuples_for_query = [tuple(record)[1:]
                              for record in list(excel_file.to_records())]
+    list_tuples_for_query = [(
+        Record_wo_id(*record).longitude,
+        Record_wo_id(*record).latitude,
+        Record_wo_id(*record).marker_name.upper(),
+        Record_wo_id(*record).descr_pattern,
+        float(f"{Record_wo_id(*record).marker_value:.3f}")
+    ) for record in list_tuples_for_query]
     
     try:
         conn, cur = db_conn_cursor(DB_NAME)
@@ -244,7 +255,7 @@ def marker_creator(
     marker_value: float,
     # clr: str,
 ) -> NoReturn:
-    popup = (f"<br>-{marker_name};<br>-{descr};<br>-{marker_value}")
+    popup = (f"<br>-{marker_name};<br>-{descr};<br>-{marker_value:.3f}, т")
     folium.CircleMarker(
         location=[longitude, latitude],
         popup=popup,
@@ -252,8 +263,6 @@ def marker_creator(
         color="#3186cc",
         fill=True,
         fill_color="#3186cc",
-        alt="TEST",
-        title="TEST-2",
     ).add_to(main_map)
 
 
@@ -295,8 +304,8 @@ def create_record_in_database(
             longitude,
             latitude,
             marker_name.upper(),
-            descr_pattern.upper(),
-            marker_value,
+            descr_pattern,
+            float(f"{marker_value:.3f}"),
         )
         if record in list_records_wo_id:
             raise RowsAlreadyExists("Такая запись уже существует")
@@ -391,7 +400,7 @@ def sidebar_elements():
 
     # d[descr_pattern] # <----------------------------------------------------------------------------------
     
-    marker_value = st.sidebar.number_input("Введите значение показателя", value=1500)
+    marker_value = st.sidebar.number_input("Введите значение показателя", value=6530.324, format="%3f")
     
     if st.sidebar.button("Добавить маркер в базу данных"):
         create_record_in_database(
@@ -422,7 +431,8 @@ def sidebar_elements():
         conn.close()
 
     if st.sidebar.button("Удалить маркер из базы данных"):
-        delete_record_from_database(marker_name_for_del.upper())
+        if marker_name_for_del is not None:
+            delete_record_from_database(marker_name_for_del.upper())
 
 
 def put_markers_on_map():
