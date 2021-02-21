@@ -128,11 +128,17 @@ def create_markers_from_excel(excel_file_name):
     
     try:
         conn, cur = db_conn_cursor(DB_NAME)
-        #list_records = db_read_table(cur, MARKER_TBL_NAME)
+        list_records = db_read_table(cur, MARKER_TBL_NAME)
         
-        db_insert_record_many(cur, MARKER_TBL_NAME, list_tuples_for_query)
+        for record in list_tuples_for_query:
+            if record not in list_records:
+                db_insert_record(cur, MARKER_TBL_NAME, record)
+            else:
+                raise RowsAlreadyExists("Такая запись уже существует")
     except sqlite3.DatabaseError as err:
         st.error(f"Ошибка базы данных: {err}")
+    except RowsAlreadyExists:
+        pass
     else:
         st.success("Маркеры успешны добавлены!")
         conn.commit()
@@ -259,7 +265,7 @@ def marker_creator(
     folium.CircleMarker(
         location=[longitude, latitude],
         popup=popup,
-        radius=15,
+        radius=10,
         color="#3186cc",
         fill=True,
         fill_color="#3186cc",
@@ -406,7 +412,6 @@ def sidebar_elements():
         create_record_in_database(
             longitude, latitude, marker_name, descr_pattern, marker_value
         )
-        put_markers_on_map()
 
     annotation_css_sidebar(
         "Удалить один маркер слоя по имени",
