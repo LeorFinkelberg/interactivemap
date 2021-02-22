@@ -66,8 +66,8 @@ def db_insert_record(cur, tbl_name: str, record: Tuple):
         """,
         record,
     )
-    
-    
+
+
 def db_insert_record_many(cur, tbl_name: str, records: List[Tuple]):
     """
     Вставляет несколько записей в таблицу базы данных
