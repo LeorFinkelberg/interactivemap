@@ -70,7 +70,6 @@ colors_for_marker = {
 
 
 def init_db():
-    print("init_db")
     try:
         conn, cur = db_conn_cursor(DB_NAME)
         db_create_table(cur, MARKER_TBL_NAME)
@@ -85,7 +84,6 @@ def main_elements():
     """
     Создает шапку страницы
     """
-    print("main_elements")
     # === Верхняя часть шапки ===
     row1_1, row1_2 = st.beta_columns([2, 1])
 
@@ -215,7 +213,6 @@ def create_markers_from_excel(excel_file_name):
 
 
 def render_folium_map():
-    print("render_folium_map")
     annotation_css(
         "Для навигации по карте можно использовать "
         "компоненты ZoomIn (+), ZoomOut (-) и Drag",
@@ -323,7 +320,6 @@ def map_creator(
     latitude: float = 37.79647853,
     zoom_start: int = 14,
 ) -> folium.Map:
-    print("map_creator")
     main_map = folium.Map(
         location=[longitude, latitude],
         # maxZoom=15,
@@ -414,7 +410,6 @@ def sidebar_elements():
         size=18,
         clr="#1E2022",
     )
-    print("sidebar_elements")
     selected_type_report = st.sidebar.radio(
         "Выберите формат отчета",
         ("Excel (табличное представление)", "LaTeX (аналитика)"),
@@ -525,7 +520,6 @@ def put_markers_on_map():
     """
     Наносит марекры на карту
     """
-    print("put_markers_on_map")
     try:
         conn, cur = db_conn_cursor(DB_NAME)
         list_records = db_read_table(cur, MARKER_TBL_NAME)

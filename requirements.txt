@@ -9,6 +9,5 @@ shap==0.34.0
 Shapely==1.7.0
 shiv==0.2.0
 shortuuid==0.5.0
-sqlite==3.33.0
 streamlit==0.71.0
 streamlit-folium==0.1.1
