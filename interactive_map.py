@@ -358,10 +358,12 @@ def create_record_in_database(
             float(f"{marker_value:.1f}"),
             marker_clr,
         )
-        if record in list_records_wo_id:
-            raise RowsAlreadyExists("Такая запись уже существует")
-        else:
+        if record not in list_records_wo_id:
             db_insert_record(cur, MARKER_TBL_NAME, record)
+        else:
+            raise RowsAlreadyExists("Такая запись уже существует")
+
+            
 
     except sqlite3.DatabaseError as err:
         st.error(f"Ошбика база данных: {err}")
