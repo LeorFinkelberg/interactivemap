@@ -429,8 +429,8 @@ def sidebar_elements():
         # st.warning("База данных успешно выгружена в текущую директорию")
         pass
 
-    # if st.sidebar.button("Обновить базу данных маркеров"):
-    #     put_markers_on_map()
+    if st.sidebar.button("Обновить базу данных маркеров"):
+        put_markers_on_map()
 
     if st.sidebar.button("Открепить базу данных маркеров"):
         pass
