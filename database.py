@@ -48,7 +48,8 @@ def db_create_table(cur, tbl_name: str):
           `latitude` REAL NOT NULL,
           `marker_name` TEXT NOT NULL,
           `descr_pattern` TEXT NOT NULL,
-          `marker_value` REAL NOT NULL
+          `marker_value` REAL NOT NULL,
+          `marker_clr` TEXT NOT NULL
         );
         """
     )
@@ -60,8 +61,8 @@ def db_insert_record(cur, tbl_name: str, record: Tuple):
     """
     cur.execute(
         f"""
-        INSERT INTO {tbl_name}(longitude, latitude, marker_name, descr_pattern, marker_value)
-        VALUES (?, ?, ?, ?, ?);
+        INSERT INTO {tbl_name}(longitude, latitude, marker_name, descr_pattern, marker_value, marker_clr)
+        VALUES (?, ?, ?, ?, ?, ?);
         """,
         record,
     )
@@ -73,7 +74,7 @@ def db_insert_record_many(cur, tbl_name: str, records: List[Tuple]):
     """
     cur.executemany(
         f"""
-        INSERT INTO {tbl_name}(longitude, latitude, marker_name, descr_pattern, marker_value)
+        INSERT INTO {tbl_name}(longitude, latitude, marker_name, descr_pattern, marker_value, marker_clr)
         VALUES (?, ?, ?, ?, ?);
         """,
         records,

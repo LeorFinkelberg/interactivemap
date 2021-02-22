@@ -41,11 +41,11 @@ DB_NAME = "gisobjects.sqlite"  # файловая база данных
 MARKER_TBL_NAME = "markers"  # таблица маркеров
 Record = namedtuple(
     "Record", ["id", "longitude", "latitude",
-               "marker_name", "descr_pattern", "marker_value"]
+               "marker_name", "descr_pattern", "marker_value", "marker_clr"]
 )
 Record_wo_id = namedtuple(
     "Record_wo_id", ["longitude", "latitude",
-               "marker_name", "descr_pattern", "marker_value"]
+               "marker_name", "descr_pattern", "marker_value", "marker_clr"]
 )
 
 
@@ -115,7 +115,7 @@ def main_elements():
 def create_markers_from_excel(excel_file_name):
     excel_file = pd.read_excel(excel_file_name,
                                names=["longitude", "latitude",
-                                      "marker_name", "descr", "value"])
+                                      "marker_name", "descr", "marker_value", "marker_clr"])
     list_tuples_for_query = [tuple(record)[1:]
                              for record in list(excel_file.to_records())]
     list_tuples_for_query = [(
@@ -123,12 +123,14 @@ def create_markers_from_excel(excel_file_name):
         Record_wo_id(*record).latitude,
         Record_wo_id(*record).marker_name.upper(),
         Record_wo_id(*record).descr_pattern,
-        float(f"{Record_wo_id(*record).marker_value:.3f}")
+        float(f"{Record_wo_id(*record).marker_value:.3f}"),
+        Record_wo_id(*record).marker_clr
     ) for record in list_tuples_for_query]
     
     try:
         conn, cur = db_conn_cursor(DB_NAME)
         list_records = db_read_table(cur, MARKER_TBL_NAME)
+        list_records = [record[1:] for record in list_records]
         
         for record in list_tuples_for_query:
             if record not in list_records:
@@ -259,16 +261,13 @@ def marker_creator(
     marker_name: str,
     descr: str,
     marker_value: float,
-    # clr: str,
+    marker_clr: str = "#3186cc",
 ) -> NoReturn:
     popup = (f"<br>-{marker_name};<br>-{descr};<br>-{marker_value:.3f}, т")
-    folium.CircleMarker(
+    folium.Marker(
         location=[longitude, latitude],
         popup=popup,
-        radius=10,
-        color="#3186cc",
-        fill=True,
-        fill_color="#3186cc",
+        icon=folium.Icon(color=marker_clr, icon="fa-industry", prefix="fa")
     ).add_to(main_map)
 
 
@@ -296,7 +295,8 @@ def create_record_in_database(
     latitude: float,
     marker_name: str,
     descr_pattern: str,
-    marker_value: float
+    marker_value: float,
+    marker_clr: str,
 ) -> NoReturn:
     try:
         conn, cur = db_conn_cursor(DB_NAME)
@@ -312,6 +312,7 @@ def create_record_in_database(
             marker_name.upper(),
             descr_pattern,
             float(f"{marker_value:.3f}"),
+            marker_clr
         )
         if record in list_records_wo_id:
             raise RowsAlreadyExists("Такая запись уже существует")
@@ -360,6 +361,16 @@ def delete_record_from_database(marker_name: str) -> NoReturn:
 
 def sidebar_elements():
     annotation_css_sidebar(
+        "Выгрузить аналитический отчет",
+        align="left",
+        size=18,
+        clr="#1E2022",
+    )
+    
+    if st.sidebar.button("Подготовить отчет"):
+        pass
+    
+    annotation_css_sidebar(
         "Работа с базой данных маркеров слоя",
         align="left",
         size=18,
@@ -390,7 +401,6 @@ def sidebar_elements():
     marker_name = st.sidebar.text_input(
         "Введите имя маркера", "Серпуховское ЛПУМГ"
     )
-
     clr_icon_for_descr_pattern = {
         "Отходы трансгазы": ("blue"),
         "Отходы добыча": ("black"),
@@ -400,18 +410,43 @@ def sidebar_elements():
         "Площадки по отходам": ("yellow"),
     }
     descr_pattern = st.sidebar.selectbox(
-        "Выберете шаблон описания маркера",
+        "Выберите шаблон описания маркера",
         list(clr_icon_for_descr_pattern.keys()),
     )
+    colors_for_marker = {
+        "красный" : "red",
+        "темно-красный" : "darkred",
+        "зеленый" : "green",
+        "темно-зеленый" : "darkgreen",
+        "синий" : "blue",
+        "темно-синий" : "darkblue",
+        "оранжевый" : "orange",
+        "фиолетовый" : "purple"}
+    selected_color = st.sidebar.selectbox(
+        "Выберите цвет маркера",
+        list(colors_for_marker.keys())
+    )
+    marker_clr = colors_for_marker[selected_color]
+    
 
     # d[descr_pattern] # <----------------------------------------------------------------------------------
     
-    marker_value = st.sidebar.number_input("Введите значение показателя", value=6530.324, format="%3f")
+    marker_value = st.sidebar.number_input(
+        "Введите значение показателя", value=6530.324, format="%3f"
+    )
     
     if st.sidebar.button("Добавить маркер в базу данных"):
         create_record_in_database(
-            longitude, latitude, marker_name, descr_pattern, marker_value
+            longitude,
+            latitude,
+            marker_name,
+            descr_pattern,
+            marker_value,
+            marker_clr
         )
+        
+    if st.sidebar.button("Обновить существующий маркер"):
+        pass
 
     annotation_css_sidebar(
         "Удалить один маркер слоя по имени",
@@ -431,6 +466,8 @@ def sidebar_elements():
         )
     except sqlite3.DatabaseError as err:
         st.error(f"Ошбика база данных: {err}")
+    else:
+        put_markers_on_map()
     finally:
         cur.close()
         conn.close()
@@ -456,8 +493,9 @@ def put_markers_on_map():
                 marker_name = from_record2_nt.marker_name
                 descr_pattern = from_record2_nt.descr_pattern
                 marker_value = from_record2_nt.marker_value
+                marker_clr = from_record2_nt.marker_clr
 
-                marker_creator(lon, lat, marker_name, descr_pattern, marker_value)
+                marker_creator(lon, lat, marker_name, descr_pattern, marker_value, marker_clr)
         else:
             raise EmptyDatabase("Пока в базе нет ни одного маркера...")
 
