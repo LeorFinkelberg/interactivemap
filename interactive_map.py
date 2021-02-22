@@ -60,6 +60,7 @@ colors_for_marker = {
 
 
 def init_db():
+    print("init_db")
     try:
         conn, cur = db_conn_cursor(DB_NAME)
         db_create_table(cur, MARKER_TBL_NAME)
@@ -74,6 +75,7 @@ def main_elements():
     """
     Создает шапку страницы
     """
+    print("main_elements")
     # === Верхняя часть шапки ===
     row1_1, row1_2 = st.beta_columns([2, 1])
 
@@ -132,8 +134,20 @@ def main_elements():
         cur.close()
         conn.close()
 
-    st.selectbox(
-        "Доступные элементы базы данных маркеров", options=list_records_wo_id
+    st.markdown("_База данных маркеров_")
+    
+    st.dataframe( # отображает базу данных маркеров
+        pd.DataFrame(
+            list_records_wo_id,
+            columns=[
+                "Долгота",
+                "Широта",
+                "Имя маркера",
+                "Категория",
+                "Значение показателя",
+                "Цвет маркера"
+            ]
+        )
     )
 
     folium.LayerControl().add_to(main_map)
@@ -147,31 +161,32 @@ def create_markers_from_excel(excel_file_name):
     excel_file = pd.read_excel(excel_file_name,
                                names=["longitude", "latitude",
                                       "marker_name", "descr", "marker_value", "marker_clr"])
-    list_tuples_for_query = [tuple(record)[1:]
+    list_tuples_from_excel = [tuple(record)[1:]
                              for record in list(excel_file.to_records())]
-    list_tuples_for_query = [(
+    list_tuples_from_excel = [(
         Record_wo_id(*record).longitude,
         Record_wo_id(*record).latitude,
         Record_wo_id(*record).marker_name.upper(),
         Record_wo_id(*record).descr_pattern,
-        float(f"{Record_wo_id(*record).marker_value:.3f}"),
+        float(f"{Record_wo_id(*record).marker_value:.1f}"),
         Record_wo_id(*record).marker_clr
-    ) for record in list_tuples_for_query]
+    ) for record in list_tuples_from_excel]
     
     try:
         conn, cur = db_conn_cursor(DB_NAME)
         list_records = db_read_table(cur, MARKER_TBL_NAME)
         list_records = [record[1:] for record in list_records]
         
-        for record in list_tuples_for_query:
+        st.write(list_records)
+        st.write(list_tuples_from_excel)
+        
+        for record in list_tuples_from_excel:
             if record not in list_records:
                 db_insert_record(cur, MARKER_TBL_NAME, record)
             else:
-                raise RowsAlreadyExists("Такая запись уже существует")
+                continue
     except sqlite3.DatabaseError as err:
         st.error(f"Ошибка базы данных: {err}")
-    except RowsAlreadyExists:
-        pass
     else:
         st.success("Маркеры успешны добавлены!")
         conn.commit()
@@ -181,6 +196,7 @@ def create_markers_from_excel(excel_file_name):
 
 
 def render_folium_map():
+    print("render_folium_map")
     annotation_css(
         "Для навигации по карте можно использовать "
         "компоненты ZoomIn (+), ZoomOut (-) и Drag",
@@ -269,10 +285,10 @@ def marker_creator(
 ) -> NoReturn:
     popup = (
         f"""
-        <table rules="rows" col=2 width="250">
+        <table rules="rows" col=2 width="255">
           <tr><td><i>Имя маркера</i></td><td><i><b>{marker_name}</b></i></td></tr>
           <tr><td><i>Категория</i></td><td>{descr}</td></tr>
-          <tr><td><i>Значение показателя</i></td><td>{marker_value:.3f}, [т]</td></tr>
+          <tr><td><i>Значение показателя</i></td><td>{marker_value:.1f}, [т]</td></tr>
         </table>
         """
     )
@@ -294,6 +310,7 @@ def map_creator(
     latitude: float = 37.50940617883486,
     zoom_start: int = 8,
 ) -> folium.Map:
+    print("map_creator")
     main_map = folium.Map(
         location=[longitude, latitude],
         # maxZoom=15,
@@ -329,7 +346,7 @@ def create_record_in_database(
             latitude,
             marker_name.upper(),
             descr_pattern,
-            float(f"{marker_value:.3f}"),
+            float(f"{marker_value:.1f}"),
             marker_clr
         )
         if record in list_records_wo_id:
@@ -384,6 +401,7 @@ def sidebar_elements():
         size=18,
         clr="#1E2022",
     )
+    print("sidebar_elements")
     selected_type_report = st.sidebar.radio(
         "Выберите формат отчета",
         ("Excel (табличное представление)", "LaTeX (аналитика)")
@@ -400,12 +418,12 @@ def sidebar_elements():
     )
 
     if st.sidebar.button("Выгрузить базу данных маркеров"):
-        st.warning("База данных успешно выгружена в текущую директорию")
+        # st.warning("База данных успешно выгружена в текущую директорию")
         pass
 
     if st.sidebar.button("Обновить базу данных маркеров"):
         put_markers_on_map()
-        st.warning("База данных успешно обновлена")
+        # st.warning("База данных успешно обновлена")
 
     annotation_css_sidebar(
         "Конструктор маркеров слоя", align="left", size=18, clr="#1E2022"
@@ -432,7 +450,7 @@ def sidebar_elements():
         "Площадки по отходам": ("yellow"),
     }
     descr_pattern = st.sidebar.selectbox(
-        "Выберите шаблон описания маркера",
+        "Выберите категорию маркера",
         list(clr_icon_for_descr_pattern.keys()),
     )
 
@@ -494,6 +512,7 @@ def put_markers_on_map():
     """
     Наносит марекры на карту
     """
+    print("put_markers_on_map")
     try:
         conn, cur = db_conn_cursor(DB_NAME)
         list_records = db_read_table(cur, MARKER_TBL_NAME)
@@ -515,10 +534,15 @@ def put_markers_on_map():
     except sqlite3.DatabaseError as err:
         st.error(f"Ошбика база данных: {err}")
     except EmptyDatabase as err:
-        st.warning(err)
+        # st.warning(err)
+        pass
     finally:
         cur.close()
         conn.close()
+        
+        
+def start_load_markers():
+    create_markers_from_excel("./additional_files/added_markers.xlsx")
 
 
 if __name__ == "__main__":
