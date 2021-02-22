@@ -113,6 +113,9 @@ def main_elements():
             "приложения на усмотрение Заказчика может быть "
             "построен с помощью [MapBox](https://www.mapbox.com/maps)_"
         )
+        
+    with row2:
+        pass
 
     # === Нижняя часть шапки ===
     row2_1, row2_2 = st.beta_columns([2, 1])
