@@ -47,6 +47,16 @@ Record_wo_id = namedtuple(
     "Record_wo_id", ["longitude", "latitude",
                "marker_name", "descr_pattern", "marker_value", "marker_clr"]
 )
+colors_for_marker = {
+    "красный" : "red",
+    "темно-красный" : "darkred",
+    "зеленый" : "green",
+    "темно-зеленый" : "darkgreen",
+    "синий" : "blue",
+    "темно-синий" : "darkblue",
+    "оранжевый" : "orange",
+    "фиолетовый" : "purple"
+}
 
 
 def init_db():
@@ -70,15 +80,30 @@ def main_elements():
     with row1_1:
         logo_css("АО ГАЗСТРОЙПРОМ", align="left", clr="#1E2022", size=33)
         logo_css(
-            "<i>Департамент по восстановлению и утилизации трубной продукции</i>",
+            "<i>Департамент по восстановлению и утилизации<br>трубной продукции</i>",
             align="left",
             clr="#52616B",
-            size=18,
+            size=20,
         )
 
     with row1_2:
         pass
-
+    
+    header_css(
+        "<i>Интерактивная карта импликации отработанных труб газопроводов</i>",
+        align="left",
+        clr="#52616B",
+        size=26,
+    )
+    
+    row1, row2 = st.beta_columns([2, 1])
+    with row1:
+        st.markdown(
+            "_Ниже приводится упрощенное представление карты. Коммерческий вариант "
+            "приложения на усмотрение Заказчика может быть "
+            "построен с помощью [MapBox](https://www.mapbox.com/maps)_"
+        )
+    
     # === Нижняя часть шапки ===
     row2_1, row2_2 = st.beta_columns([2, 1])
 
@@ -110,6 +135,12 @@ def main_elements():
     st.selectbox(
         "Доступные элементы базы данных маркеров", options=list_records_wo_id
     )
+
+    folium.LayerControl().add_to(main_map)
+
+    # width, height = GetSystemMetrics(0), GetSystemMetrics(1)
+    # fraction_width = 0.735
+    # fraction_height = 0.55
 
 
 def create_markers_from_excel(excel_file_name):
@@ -149,39 +180,12 @@ def create_markers_from_excel(excel_file_name):
         conn.close()
 
 
-def create_map_figure():
-    """
-    Отображает сконфигурированную карту
-    """
-    header_css(
-        "<i>Интерактивная карта импликации отработанных труб газопроводов</i>",
-        align="left",
-        clr="#52616B",
-        size=26,
-    )
-
-    folium.LayerControl().add_to(main_map)
-
-    # width, height = GetSystemMetrics(0), GetSystemMetrics(1)
-    # fraction_width = 0.735
-    # fraction_height = 0.55
-
-    row1, row2 = st.beta_columns([2, 1])
-    with row1:
-        st.markdown(
-            "_Ниже приводится упрощенное представление карты. Коммерческий вариант "
-            "приложения на усмотрение Заказчика может быть "
-            "построен с помощью [MapBox](https://www.mapbox.com/maps)_"
-        )
-
+def render_folium_map():
     annotation_css(
         "Для навигации по карте можно использовать "
         "компоненты ZoomIn (+), ZoomOut (-) и Drag",
         clr="#C9D6DF",
     )
-
-
-def render_folium_map():
     folium_static(  # NB! требуется для отображения карты в Streamlit
         main_map, width=1050, height=550
     )
@@ -261,13 +265,27 @@ def marker_creator(
     marker_name: str,
     descr: str,
     marker_value: float,
-    marker_clr: str = "#3186cc",
+    marker_clr: str,
 ) -> NoReturn:
-    popup = (f"<br>-{marker_name};<br>-{descr};<br>-{marker_value:.3f}, т")
+    popup = (
+        f"""
+        <table rules="rows" col=2 width="250">
+          <tr><td><i>Имя маркера</i></td><td><i><b>{marker_name}</b></i></td></tr>
+          <tr><td><i>Категория</i></td><td>{descr}</td></tr>
+          <tr><td><i>Значение показателя</i></td><td>{marker_value:.3f}, [т]</td></tr>
+        </table>
+        """
+    )
+    marker_clr = colors_for_marker[marker_clr]
     folium.Marker(
         location=[longitude, latitude],
         popup=popup,
-        icon=folium.Icon(color=marker_clr, icon="fa-industry", prefix="fa")
+        parse_html=True,
+        icon=folium.Icon(
+            color=marker_clr,
+            icon="fa-cogs",
+            prefix="fa"
+        )
     ).add_to(main_map)
 
 
@@ -361,12 +379,16 @@ def delete_record_from_database(marker_name: str) -> NoReturn:
 
 def sidebar_elements():
     annotation_css_sidebar(
-        "Выгрузить аналитический отчет",
+        "Сводные отчеты",
         align="left",
         size=18,
         clr="#1E2022",
     )
-    
+    selected_type_report = st.sidebar.radio(
+        "Выберите формат отчета",
+        ("Excel (табличное представление)", "LaTeX (аналитика)")
+    )
+
     if st.sidebar.button("Подготовить отчет"):
         pass
     
@@ -413,26 +435,17 @@ def sidebar_elements():
         "Выберите шаблон описания маркера",
         list(clr_icon_for_descr_pattern.keys()),
     )
-    colors_for_marker = {
-        "красный" : "red",
-        "темно-красный" : "darkred",
-        "зеленый" : "green",
-        "темно-зеленый" : "darkgreen",
-        "синий" : "blue",
-        "темно-синий" : "darkblue",
-        "оранжевый" : "orange",
-        "фиолетовый" : "purple"}
-    selected_color = st.sidebar.selectbox(
+
+    marker_clr = st.sidebar.selectbox(
         "Выберите цвет маркера",
         list(colors_for_marker.keys())
     )
-    marker_clr = colors_for_marker[selected_color]
     
 
     # d[descr_pattern] # <----------------------------------------------------------------------------------
     
     marker_value = st.sidebar.number_input(
-        "Введите значение показателя", value=6530.324, format="%3f"
+        "Введите значение показателя, [т]", value=6530.324, format="%3f"
     )
     
     if st.sidebar.button("Добавить маркер в базу данных"):
@@ -513,6 +526,5 @@ if __name__ == "__main__":
     main_map = map_creator()
     main_elements()
     sidebar_elements()
-    create_map_figure()
     put_markers_on_map()
     render_folium_map()
