@@ -471,8 +471,6 @@ def sidebar_elements():
         "Выберите цвет маркера", list(colors_for_marker.keys())
     )
 
-    # d[descr_pattern] # <----------------------------------------------------------------------------------
-
     marker_value = st.sidebar.number_input(
         "Введите значение показателя, [т]", value=6530.324, format="%3f"
     )
