@@ -8,26 +8,18 @@ class RowsAlreadyExists(Exception):
     в базу данных неуникальной записи
     """
 
-    pass
-
-
 class MarkerNameError(Exception):
     """
     Пользовательское исключение. Возбуждается при попытке удалить запись по
     отсутствующему в базе данных имени маркера
     """
 
-    pass
-
-
 class EmptyDatabase(Exception):
     """
     Пользовательское исключение. Возбуждается если при старте сессии
     база данных пуста
     """
-
-    pass
-
+    
 
 def db_conn_cursor(db_name: str):
     """
