@@ -113,7 +113,7 @@ def main_elements():
             "приложения на усмотрение Заказчика может быть "
             "построен с помощью [MapBox](https://www.mapbox.com/maps)_"
         )
-        
+
     with row2:
         pass
 
@@ -365,8 +365,6 @@ def create_record_in_database(
             db_insert_record(cur, MARKER_TBL_NAME, record)
         else:
             raise RowsAlreadyExists("Такая запись уже существует")
-
-            
 
     except sqlite3.DatabaseError as err:
         st.error(f"Ошбика база данных: {err}")
