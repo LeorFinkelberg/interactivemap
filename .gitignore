@@ -130,3 +130,6 @@ dmypy.json
 
 # additional materials
 additional_files/
+
+# Database
+gisobjects.sqlite
