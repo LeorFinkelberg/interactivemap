@@ -437,23 +437,9 @@ def sidebar_elements():
     if st.sidebar.button("Обновить базу данных маркеров"):
         put_markers_on_map()
 
-    if st.sidebar.button("Открепить базу данных маркеров"):
-        pass
-
+    # --- ОПАСНЫЙ ФРАГМЕНТ ---
     if st.sidebar.button("Удалить базу данных"):
-        db_file = pathlib2.Path(DB_NAME_PATH)
-        if db_file.exists():
-            try:
-                # небезопасный временный вариант
-                # удаляет базу данных в облаке с ОС Linux
-                output = subprocess.call(f"rm -f {db_file}", shell=True)
-            except FileNotFoundError as err:
-                print(err)
-            else:
-                print(f"Результат команды удаления базы данных: {output}")
-                st.warning(
-                    "База данных удалена! Нажмите кнопку 'Обновить базу данных маркеров'"
-                )
+        delete_database()
 
     annotation_css_sidebar(
         "Конструктор маркеров слоя", align="left", size=18, clr="#1E2022"
@@ -532,6 +518,25 @@ def sidebar_elements():
     if st.sidebar.button("Удалить маркер из базы данных"):
         if marker_name_for_del is not None:
             delete_record_from_database(marker_name_for_del.upper())
+
+
+def delete_database() -> NoReturn:
+    """
+    Удаляет базу данных
+    """
+    db_file = pathlib2.Path(DB_NAME_PATH)
+    if db_file.exists():
+        try:
+            # небезопасный временный вариант
+            # удаляет базу данных в облаке с ОС Linux
+            output = subprocess.call(f"rm -f {db_file}", shell=True)
+        except FileNotFoundError as err:
+            print(err)
+        else:
+            print(f"Результат команды удаления базы данных: {output}")
+            st.warning(
+                "База данных удалена! Нажмите кнопку 'Обновить базу данных маркеров'"
+            )
 
 
 def put_markers_on_map():
