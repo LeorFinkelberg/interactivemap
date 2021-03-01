@@ -1,4 +1,6 @@
 import sqlite3
+import pathlib2
+import os
 from collections import namedtuple
 from typing import NoReturn
 
@@ -437,6 +439,17 @@ def sidebar_elements():
 
     if st.sidebar.button("Открепить базу данных маркеров"):
         pass
+    
+    if st.sidebar.button("Удалить базу данных"):
+            if pathlib2.Path(DB_NAME).exists():
+                os.system(f"del {DB_NAME}") # временное опасное решение
+                                            # только для Windows
+                st.error(
+                    "База данных удалена. Нажмите кнопку "
+                    "'Обновить базу данных'"
+                )
+            else:
+                st.error("База данных не найдена!")
 
     annotation_css_sidebar(
         "Конструктор маркеров слоя", align="left", size=18, clr="#1E2022"
