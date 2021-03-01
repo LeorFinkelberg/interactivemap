@@ -12,3 +12,4 @@ shiv==0.2.0
 shortuuid==0.5.0
 streamlit==0.76.0
 streamlit-folium==0.1.1
+pathlib2==2.3.5
