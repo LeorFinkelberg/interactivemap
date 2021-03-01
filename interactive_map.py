@@ -444,11 +444,13 @@ def sidebar_elements():
         db_file = pathlib2.Path(DB_NAME_PATH)
         if db_file.exists():
             try:
+                # небезопасный временный вариант
+                # удаляет базу данных в облаке с ОС Linux
                 output = subprocess.call(f"rm -f {db_file}", shell=True)
-            except Exception as err:
-                st.error(err)
+            except FileNotFoundError as err:
+                print(err)
             else:
-                st.warning(f"Результат команды удаления базы данных: {output}")
+                print(f"Результат команды удаления базы данных: {output}")
                 st.warning(
                     "База данных удалена! Нажмите кнопку 'Обновить базу данных маркеров'"
                 )
