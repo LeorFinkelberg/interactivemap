@@ -33,7 +33,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-DB_NAME = "gisobjects.sqlite"  # файловая база данных
+DB_NAME = "./gisobjects.sqlite"  # файловая база данных
 MARKER_TBL_NAME = "markers"  # таблица маркеров
 Record = namedtuple(
     "Record",
