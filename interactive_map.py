@@ -1,5 +1,5 @@
-import os
 import sqlite3
+import subprocess
 from collections import namedtuple
 from typing import NoReturn
 
@@ -444,16 +444,14 @@ def sidebar_elements():
         db_file = pathlib2.Path(DB_NAME_PATH)
         if db_file.exists():
             try:
-                os.system(f"del {db_file}")  # временное опасное решение
-                # только для Windows
-            except Exception as err:
+                output = subprocess.call(f"del {db_file}", shell=True)
+            except FileNotFoundError as err:
                 print(err)
             else:
+                print(f"Результат команды удаления базы данных: {output}")
                 st.warning(
                     "База данных удалена! Нажмите кнопку 'Обновить базу данных маркеров'"
                 )
-        else:
-            print("База данных не найдена!")
 
     annotation_css_sidebar(
         "Конструктор маркеров слоя", align="left", size=18, clr="#1E2022"
