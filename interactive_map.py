@@ -33,7 +33,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-DB_NAME = "./gisobjects.sqlite"  # файловая база данных
+DB_NAME_PATH = "./gisobjects.sqlite"  # файловая база данных
 MARKER_TBL_NAME = "markers"  # таблица маркеров
 Record = namedtuple(
     "Record",
@@ -73,10 +73,10 @@ colors_for_marker = {
 
 def init_db():
     try:
-        conn, cur = db_conn_cursor(DB_NAME)
+        conn, cur = db_conn_cursor(DB_NAME_PATH)
         db_create_table(cur, MARKER_TBL_NAME)
     except sqlite3.DatabaseError as err:
-        st.error(f"Ошбика база данных: {err}")
+        print(f"Ошбика база данных: {err}")
     finally:
         cur.close()
         conn.close()
@@ -136,13 +136,13 @@ def main_elements():
         pass
 
     try:
-        conn, cur = db_conn_cursor(DB_NAME)
+        conn, cur = db_conn_cursor(DB_NAME_PATH)
         list_records = db_read_table(cur, MARKER_TBL_NAME)
 
         # список записей таблицы без индекса
         list_records_wo_id = [record[1:] for record in list_records]
     except sqlite3.DatabaseError as err:
-        st.error(f"Ошбика база данных: {err}")
+        print(f"Ошбика база данных: {err}")
     finally:
         cur.close()
         conn.close()
@@ -198,7 +198,7 @@ def create_markers_from_excel(excel_file_name):
     ]
 
     try:
-        conn, cur = db_conn_cursor(DB_NAME)
+        conn, cur = db_conn_cursor(DB_NAME_PATH)
         list_records = db_read_table(cur, MARKER_TBL_NAME)
         list_records = [record[1:] for record in list_records]
 
@@ -208,7 +208,7 @@ def create_markers_from_excel(excel_file_name):
             else:
                 continue
     except sqlite3.DatabaseError as err:
-        st.error(f"Ошибка базы данных: {err}")
+        print(f"Ошибка базы данных: {err}")
     else:
         st.success("Маркеры успешны добавлены!")
         conn.commit()
@@ -348,7 +348,7 @@ def create_record_in_database(
     marker_clr: str,
 ) -> NoReturn:
     try:
-        conn, cur = db_conn_cursor(DB_NAME)
+        conn, cur = db_conn_cursor(DB_NAME_PATH)
         # db_create_table(cur, MARKER_TBL_NAME)
 
         list_records = db_read_table(cur, MARKER_TBL_NAME)
@@ -369,9 +369,9 @@ def create_record_in_database(
             raise RowsAlreadyExists("Такая запись уже существует")
 
     except sqlite3.DatabaseError as err:
-        st.error(f"Ошбика база данных: {err}")
+        print(f"Ошбика база данных: {err}")
     except RowsAlreadyExists:
-        st.error(f"Запись {record} уже существует!")
+        print(f"Запись {record} уже существует!")
     else:
         st.success(f"Запись {record} успешно добавлена в базу данных!")
         conn.commit()
@@ -382,7 +382,7 @@ def create_record_in_database(
 
 def delete_record_from_database(marker_name: str) -> NoReturn:
     try:
-        conn, cur = db_conn_cursor(DB_NAME)
+        conn, cur = db_conn_cursor(DB_NAME_PATH)
         list_records = db_read_table(cur, MARKER_TBL_NAME)
 
         # список имен маркеров
@@ -396,9 +396,9 @@ def delete_record_from_database(marker_name: str) -> NoReturn:
                 f"Маркера '{marker_name.upper()}' нет в базе данных!"
             )
     except sqlite3.DatabaseError as err:
-        st.error(f"Ошибка базы данных: {err}")
+        print(f"Ошибка базы данных: {err}")
     except MarkerNameError as err:
-        st.error(err)
+        print(err)
     else:
         st.success("Запись успешно удалена из базы данных!")
         conn.commit()
@@ -441,14 +441,19 @@ def sidebar_elements():
         pass
 
     if st.sidebar.button("Удалить базу данных"):
-        if pathlib2.Path(DB_NAME).exists():
-            os.system(f"del {DB_NAME}")  # временное опасное решение
-            # только для Windows
-            st.error(
-                "База данных удалена. Нажмите кнопку 'Обновить базу данных маркеров'"
-            )
+        db_file = pathlib2.Path(DB_NAME_PATH)
+        if db_file.exists():
+            try:
+                os.system(f"del {db_file}")  # временное опасное решение
+                # только для Windows
+            except Exception as err:
+                print(err)
+            else:
+                st.warning(
+                    "База данных удалена! Нажмите кнопку 'Обновить базу данных маркеров'"
+                )
         else:
-            st.error("База данных не найдена!")
+            print("База данных не найдена!")
 
     annotation_css_sidebar(
         "Конструктор маркеров слоя", align="left", size=18, clr="#1E2022"
@@ -505,7 +510,7 @@ def sidebar_elements():
     )
 
     try:
-        conn, cur = db_conn_cursor(DB_NAME)
+        conn, cur = db_conn_cursor(DB_NAME_PATH)
         list_records = db_read_table(cur, MARKER_TBL_NAME)
 
         # список записей таблицы без индекса
@@ -517,7 +522,7 @@ def sidebar_elements():
             options=list_avaible_marker_name,
         )
     except sqlite3.DatabaseError as err:
-        st.error(f"Ошбика база данных: {err}")
+        print(f"Ошбика база данных: {err}")
     else:
         put_markers_on_map()
     finally:
@@ -534,7 +539,7 @@ def put_markers_on_map():
     Наносит марекры на карту
     """
     try:
-        conn, cur = db_conn_cursor(DB_NAME)
+        conn, cur = db_conn_cursor(DB_NAME_PATH)
         list_records = db_read_table(cur, MARKER_TBL_NAME)
 
         if list_records:
@@ -559,7 +564,7 @@ def put_markers_on_map():
             raise EmptyDatabase("Пока в базе нет ни одного маркера...")
 
     except sqlite3.DatabaseError as err:
-        st.error(f"Ошбика база данных: {err}")
+        print(f"Ошбика база данных: {err}")
     except EmptyDatabase as err:
         # st.warning(err)
         pass
