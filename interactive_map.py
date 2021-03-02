@@ -431,8 +431,7 @@ def sidebar_elements():
     )
 
     if st.sidebar.button("Выгрузить базу данных маркеров"):
-        # st.warning("База данных успешно выгружена в текущую директорию")
-        pass
+        print("База данных успешно выгружена в текущую директорию")
 
     if st.sidebar.button("Обновить базу данных маркеров"):
         put_markers_on_map()
@@ -571,8 +570,7 @@ def put_markers_on_map():
     except sqlite3.DatabaseError as err:
         print(f"Ошбика база данных: {err}")
     except EmptyDatabase as err:
-        # st.warning(err)
-        pass
+        print(err)
     finally:
         cur.close()
         conn.close()
